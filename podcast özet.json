@@ -1,0 +1,199 @@
+{
+  "name": "podcast özet",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 6
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -400,
+        32
+      ],
+      "id": "fb2d34dd-9f0e-4cf5-90ee-e0126d4d7d41",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "jsCode": "return [\n  { json: { podcastAdi: \"Lex Fridman\", rss: \"https://lexfridman.com/feed/podcast/\" } },\n  { json: { podcastAdi: \"My First Million\", rss: \"https://feeds.megaphone.fm/HS2300184645\" } },\n  { json: { podcastAdi: \"How I Built This\", rss: \"https://feeds.npr.org/510313/podcast.xml\" } },\n  { json: { podcastAdi: \"Tim Ferriss\", rss: \"https://rss.art19.com/tim-ferriss-show\" } }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -192,
+        32
+      ],
+      "id": "db9a2ffb-f732-4feb-8fa9-c25cbdb0a1b6",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.rss }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        16,
+        32
+      ],
+      "id": "1572ebd6-5763-49b2-89f4-78535bd3ff17",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const data = $input.item.json.data;\n\nconst firstItem = data.match(/<item>([\\s\\S]*?)<\\/item>/)?.[1] || '';\n\nconst titleMatch = data.match(/<channel>[\\s\\S]*?<title>([\\s\\S]*?)<\\/title>/);\nconst podcastAdi = titleMatch ? titleMatch[1].replace(/<!\\[CDATA\\[(.*?)\\]\\]>/, '$1') : 'Podcast';\n\nreturn {\n  json: {\n    podcastAdi: podcastAdi,\n    sonBolum: firstItem.substring(0, 3000)\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        32
+      ],
+      "id": "c89a5b77-b995-4a75-b98e-45d6bc3a78dc",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4.1-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4.1-MINI"
+        },
+        "responses": {
+          "values": [
+            {
+              "role": "system",
+              "content": "=Sen bir podcast editörüsün. Sana RSS feed verisi gelecek.\nEn son bölümü bul ve şu formatta özetle:\n\n🎙️ Yeni Podcast Bölümü!\n\n📌 Podcast: {{ $json.podcastAdi }}\n📺 Bölüm: [bölüm başlığı]\n\n📝 Özet:\n[3-4 cümle özet]\n\n🔗 Dinle: [link]\n\nTürkçe yaz."
+            },
+            {
+              "content": "={{ $json.sonBolum }}"
+            }
+          ]
+        },
+        "simplify": false,
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.1,
+      "position": [
+        432,
+        32
+      ],
+      "id": "c1b00e4f-648d-40be-80a7-f4411fdf0cf8",
+      "name": "Message a model",
+      "credentials": {
+        "openAiApi": {
+          "id": "FLlMZQOIE6OrVG5j",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "1990378751",
+        "text": "={{ $json.output[0].content[0].text }}",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "=none"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        784,
+        32
+      ],
+      "id": "bd6b1670-e9cd-442c-b3e1-4df723dad647",
+      "name": "Send a text message",
+      "webhookId": "4b8073c2-f156-420d-b6d0-0b352a508c9b",
+      "credentials": {
+        "telegramApi": {
+          "id": "ijvduiUVISwaUIdt",
+          "name": "Telegram account 3"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "ddefba0a-ae7c-4866-84bd-ed66b940475a",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a6fcf8cdbfa694723eeef13d2caf6336a4eca0070633586b77becbe4d7630a97"
+  },
+  "id": "mSgiYWlNZAAip5HG",
+  "tags": []
+}
